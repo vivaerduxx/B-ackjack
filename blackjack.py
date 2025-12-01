@@ -4,6 +4,7 @@ from random import randint
 pygame.init()
 WIDTH, HEIGHT = 800, 600
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
+CLOCK = pygame.time.Clock()
 pygame.display.set_caption("Blackjack Menu")
 #Formattazione Immagini 
 
@@ -14,33 +15,49 @@ GRIGIO = (180, 180, 180)
 GRIGIO_SCURO = (100, 100, 100)
 NERO = (0, 0, 0)
 GIALLO = (255, 222, 0)
-
+#Testi
 font_titolo = pygame.font.SysFont(None, 72)
 font_bottone = pygame.font.SysFont(None, 48)
+#Variabili di gioco
+first_turn=True
+can_split=False
+card_split=False
+pc_turn=False
+blacjack_pc=True
+tot=0
+player_cards=[]
+busted=False
+dealer_cards=[]
+dealer_tot=0
+dealer_busted=False
+dealer_hidden=True
+game_over=False
+winner=None
+
 
 
 carte_asset={
-    "2":pygame.transform.scale(pygame.image.load("assets/carte/2.png"), (120, 150)),
-    "3":pygame.transform.scale(pygame.image.load("assets/carte/3.png"), (120, 150)),
-    "4":pygame.transform.scale(pygame.image.load("assets/carte/4.png"), (120, 150)),
-    "5":pygame.transform.scale(pygame.image.load("assets/carte/5.png"), (120, 150)),
-    "6":pygame.transform.scale(pygame.image.load("assets/carte/6.png"), (120, 150)),
-    "7":pygame.transform.scale(pygame.image.load("assets/carte/7.png"), (120, 150)),
-    "8":pygame.transform.scale(pygame.image.load("assets/carte/8.png"), (120, 150)),
-    "9":pygame.transform.scale(pygame.image.load("assets/carte/9.png"), (120, 150)),
-    "10":pygame.transform.scale(pygame.image.load("assets/carte/10.png"), (120, 150)),
-    "J":pygame.transform.scale(pygame.image.load("assets/carte/J.png"), (120, 150)),
-    "Q":pygame.transform.scale(pygame.image.load("assets/carte/Q.png"), (120, 150)),
-    "K":pygame.transform.scale(pygame.image.load("assets/carte/K.png"), (120, 150)),
-    "A":pygame.transform.scale(pygame.image.load("assets/carte/A.png"), (120, 150)),
+    "2":pygame.transform.scale(pygame.image.load("assets/carte/2.png"), (90, 112)),
+    "3":pygame.transform.scale(pygame.image.load("assets/carte/3.png"), (90, 112)),
+    "4":pygame.transform.scale(pygame.image.load("assets/carte/4.png"), (90, 112)),
+    "5":pygame.transform.scale(pygame.image.load("assets/carte/5.png"), (90, 112)),
+    "6":pygame.transform.scale(pygame.image.load("assets/carte/6.png"), (90, 112)),
+    "7":pygame.transform.scale(pygame.image.load("assets/carte/7.png"), (90, 112)),
+    "8":pygame.transform.scale(pygame.image.load("assets/carte/8.png"), (90, 112)),
+    "9":pygame.transform.scale(pygame.image.load("assets/carte/9.png"), (90, 112)),
+    "10":pygame.transform.scale(pygame.image.load("assets/carte/10.png"), (90, 112)),
+    "J":pygame.transform.scale(pygame.image.load("assets/carte/J.png"), (90, 112)),
+    "Q":pygame.transform.scale(pygame.image.load("assets/carte/Q.png"), (90, 112)),
+    "K":pygame.transform.scale(pygame.image.load("assets/carte/K.png"), (90, 112)),
+    "A":pygame.transform.scale(pygame.image.load("assets/carte/A.png"), (90, 112)),
 }
 
 rett_pulsanti={
     "play":pygame.Rect(WIDTH//2 - 120, 180, 240, 60),           "play hover":pygame.Rect(WIDTH//2 - 120, 180, 240, 60),
     "exit":pygame.Rect(WIDTH//2 - 120, 270, 240, 60),           "exit hover":pygame.Rect(WIDTH//2 - 120, 270, 240, 60),
-    "call":pygame.Rect(WIDTH//2 - 260, 500, 120, 50),           "call hover":pygame.Rect(WIDTH//2 - 260, 320, 120, 50),
-    "step":pygame.Rect(WIDTH//2 + 140, 500, 120, 50),           "step hover":pygame.Rect(WIDTH//2 + 140, 320, 120, 50),
-    "split":pygame.Rect(WIDTH//2 - 60, 500, 120, 50),           "split hover":pygame.Rect(WIDTH//2 - 60, 320, 120, 50),
+    "call":pygame.Rect(WIDTH//2 + 100, 500, 120, 50),           "call hover":pygame.Rect(WIDTH//2 - 260, 320, 120, 50),
+    "step":pygame.Rect(WIDTH//2 + 250, 500, 120, 50),           "step hover":pygame.Rect(WIDTH//2 + 140, 320, 120, 50),
+    "split":pygame.Rect(800, 500, 120, 50),                     "split hover":pygame.Rect(WIDTH//2 - 60, 320, 120, 50),
     "fiche":pygame.Rect(WIDTH - 150, 20, 130, 50),              "fiche hover":pygame.Rect(WIDTH - 150, 20, 130, 50),
     "exit game":pygame.Rect(WIDTH - 70, HEIGHT - 70, 50, 50),   "exit game hover":pygame.Rect(WIDTH - 70, HEIGHT - 70, 50, 50),
 
@@ -49,132 +66,164 @@ rett_pulsanti={
 
 
 def main():
-    first_hand()
-    global first_card, second_card
+    global tot, player_cards, busted, dealer_cards, dealer_tot, dealer_hidden, game_over, winner
+    tot=0
+    player_cards=[]
+    busted=False
+    dealer_cards=[]
+    dealer_tot=0
+    dealer_hidden=True
+    game_over=False
+    winner=None
+    card_pesca()  # Draw initial two cards for player
+    dealer_draw()  # Draw initial two cards for dealer
     while True:
-       
         WIN.fill(VERDE)
-        
-        draw_card(carte_asset[first_card], 50, 100)
-        draw_card(carte_asset[second_card], 200, 100)
+        dealer_card_draw()
+        card_draw()
+        pygame.draw.rect(WIN, GRIGIO, rett_pulsanti["call"])
+        text_call = font_bottone.render("Call", True, NERO)
+        WIN.blit(text_call, (rett_pulsanti["call"].x + (rett_pulsanti["call"].width - text_call.get_width()) // 2,rett_pulsanti["call"].y + (rett_pulsanti["call"].height - text_call.get_height()) // 2))
+        pygame.draw.rect(WIN, GRIGIO, rett_pulsanti["step"])
+        text_step = font_bottone.render("Step", True, NERO)
+        WIN.blit(text_step, (rett_pulsanti["step"].x + (rett_pulsanti["step"].width - text_step.get_width()) // 2,rett_pulsanti["step"].y + (rett_pulsanti["step"].height - text_step.get_height()) // 2))
+        text_totale = font_bottone.render(f"Totale:{tot} ", True, BIANCO)
+        WIN.blit(text_totale, ((WIDTH//2 - text_totale.get_width()//2)+250, 400))
+        if busted:
+            text_sforato = font_bottone.render("Hai sforato!", True, BIANCO)
+            WIN.blit(text_sforato, (WIDTH//2 - text_sforato.get_width()//2, 100))
+        if game_over:
+            if winner == "player":
+                text_win = font_bottone.render("Hai vinto!", True, BIANCO)
+            elif winner == "dealer":
+                text_win = font_bottone.render("Hai perso!", True, BIANCO)
+            else:
+                text_win = font_bottone.render("Pareggio!", True, BIANCO)
+            WIN.blit(text_win, (WIDTH//2 - text_win.get_width()//2, 150))
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                False
                 pygame.quit()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mx, my = event.pos
                 if rett_pulsanti["call"].collidepoint(mx, my):
-                    print("Chiamata")
+                    card_pesca()
                 if rett_pulsanti["step"].collidepoint(mx, my):
-                    print("Passo")
+                    dealer_turn()
                 if rett_pulsanti["fiche"].collidepoint(mx, my):
                     print("Aggiungi Fiche")
-                
+
 
         pygame.display.update()
     
-def first_hand():
-    first_card_val=randint(1,13)
-    second_card_val=randint(1,13)
-    if first_card_val==11:
-        first_card="J"
-        first_card_val=10
-    elif first_card_val==12:
-        first_card="Q"
-        first_card_val=10
-    elif first_card_val==13:
-        first_card="K"
-        first_card_val=10
-    elif first_card_val==1:
-        first_card="A"
-        #val_asso(first_card_val)
-    else:
-        first_card=str(first_card)
-    if second_card_val==11:
-        second_card="J"
-        second_card_val=10
-    elif second_card_val==12:
-        second_card="Q"
-        second_card_val=10
-    elif second_card_val==13:
-        second_card="K"
-        second_card_val=10
-    elif second_card_val==1:
-        second_card="A"
-        #val_asso(second_card_val)
-    else:
-        second_card=str(second_card)
-    p_hand=first_card_val+second_card_val
-    if p_hand==21:
-        WIN.fill(VERDE)
-        blackjack_p = font_titolo.render("BLACKJACK", True, GIALLO) 
-        WIN.blit(blackjack_p, (WIDTH//2 - blackjack_p.get_width()//2, 60))
-        pygame.display.update()               
-    return first_card, second_card, p_hand
-    
-    
- 
-def draw_menu():
-    WIN.fill(VERDE)
-    # Titolo
-    testo = font_titolo.render("Blackjack", True, GIALLO) 
-    WIN.blit(testo, (WIDTH//2 - testo.get_width()//2, 60))
-
-    # Pulsanti
-    btn_start = rett_pulsanti["play"]
-    btn_exit = rett_pulsanti["exit"]
-
-    pygame.draw.rect(WIN, GRIGIO, btn_start)
-    pygame.draw.rect(WIN, GRIGIO, btn_exit)
-
-    start_txt = font_bottone.render("Inizia", True, NERO)
-    exit_txt = font_bottone.render("Esci", True, NERO)
-    WIN.blit(start_txt, (btn_start.x + btn_start.width//2 - start_txt.get_width()//2,
-                         btn_start.y + btn_start.height//2 - start_txt.get_height()//2))
-    WIN.blit(exit_txt, (btn_exit.x + btn_exit.width//2 - exit_txt.get_width()//2,
-                        btn_exit.y + btn_exit.height//2 - exit_txt.get_height()//2))
-    return btn_start, btn_exit
-
-def menu_loop():
+def start_menu():
     while True:
-        btn_start, btn_exit = draw_menu()
-        pygame.display.update()
+        WIN.fill(VERDE)
+        texct_titolo = font_titolo.render("Blackjack", True, GIALLO)
+        WIN.blit(texct_titolo, (WIDTH//2 - texct_titolo.get_width()//2, 80))
+        
+        pygame.draw.rect(WIN, GRIGIO, rett_pulsanti["play"])
+        text_play = font_bottone.render("Play", True, NERO)
+        WIN.blit(text_play, (rett_pulsanti["play"].x + (rett_pulsanti["play"].width - text_play.get_width()) // 2,rett_pulsanti["play"].y + (rett_pulsanti["play"].height - text_play.get_height()) // 2))
+        pygame.draw.rect(WIN, GRIGIO, rett_pulsanti["exit"])
+        text_exit = font_bottone.render("Exit", True, NERO)
+        WIN.blit(text_exit, (rett_pulsanti["exit"].x + (rett_pulsanti["exit"].width - text_exit.get_width()) // 2,rett_pulsanti["exit"].y + (rett_pulsanti["exit"].height - text_exit.get_height()) // 2))
+        
+        
+        
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                False
                 pygame.quit()
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            elif event.type == pygame.MOUSEBUTTONDOWN:
                 mx, my = event.pos
-                if btn_start.collidepoint(mx, my):
+                if rett_pulsanti["play"].collidepoint(mx, my):
                     main()
-                if btn_exit.collidepoint(mx, my):
+                if rett_pulsanti["exit"].collidepoint(mx, my):
                     pygame.quit()
-                    
-def draw_card(card, x, y):
-    card=randint(1,13)
-    if card==11:
-        card="J"
-    elif card==12:
-        card="Q"
-    elif card==13:
-        card="K"
-    elif card==1:
-        card="A"
+
+        pygame.display.update()
+def card_draw():
+    global player_cards
+    for i, card in enumerate(player_cards):
+        WIN.blit(carte_asset[card], (WIDTH//2 - 200 + i * 120, HEIGHT//2 - 75))
+
+def dealer_draw():
+    global dealer_cards, dealer_tot
+    cards=["2","3","4","5","6","7","8","9","10","J","Q","K","A"]
+    first_card = cards[randint(0,12)]
+    second_card = cards[randint(0,12)]
+    dealer_cards.append(first_card)
+    dealer_cards.append(second_card)
+    dealer_tot = calculate_total(dealer_cards)
+
+def dealer_card_draw():
+    global dealer_cards, dealer_hidden
+    for i, card in enumerate(dealer_cards):
+        if i == 1 and dealer_hidden:
+            WIN.blit(pygame.transform.scale(pygame.image.load("assets/back.png"), (90, 112)), (WIDTH//2 - 200 + i * 120, HEIGHT//2 - 200))
+        else:
+            WIN.blit(carte_asset[card], (WIDTH//2 - 200 + i * 120, HEIGHT//2 - 200))
+def card_pesca():
+    global tot, first_turn, player_cards, busted
+    cards=["2","3","4","5","6","7","8","9","10","J","Q","K","A"]
+    if first_turn:
+        first_card = cards[randint(0,12)]
+        second_card = cards[randint(0,12)]
+        player_cards.append(first_card)
+        player_cards.append(second_card)
+        first_turn = False
     else:
-        card=str(card)
-    WIN.blit(carte_asset[card], (x, y))
-    x+=carte_asset[card].get_width()+10
-    return x
+        card = cards[randint(0,12)]
+        player_cards.append(card)
+    tot = calculate_total(player_cards)
+    if tot > 21:
+        busted = True
+    return player_cards[-1] if player_cards else None
+def calculate_total(cards):
+    total = 0
+    aces = 0
+    for card in cards:
+        if card in ["J","Q","K"]:
+            total += 10
+        elif card == "A":
+            aces += 1
+            total += 11
+        else:
+            total += int(card)
+    while total > 21 and aces:
+        total -= 10
+        aces -= 1
+    return total
 
-if __name__ == "__main__":
-    menu_loop()
+def dealer_turn():
+    global dealer_hidden, dealer_tot, dealer_busted, game_over, winner, busted, tot
+    dealer_hidden = False  # Reveal hidden card
+    while dealer_tot < 17 and not dealer_busted:
+        cards = ["2","3","4","5","6","7","8","9","10","J","Q","K","A"]
+        card = cards[randint(0,12)]
+        dealer_cards.append(card)
+        dealer_tot = calculate_total(dealer_cards)
+        if dealer_tot > 21:
+            dealer_busted = True
+    # Determine winner
+    game_over = True
+    if busted:
+        winner = "dealer"
+    elif dealer_busted:
+        winner = "player"
+    elif tot > dealer_tot:
+        winner = "player"
+    elif tot < dealer_tot:
+        winner = "dealer"
+    else:
+        winner = "tie"
 
-
-while True:
-    menu_loop()
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            False
-            pygame.quit()
-         
+def card_value(card):
+    if card in ["J","Q","K"]:
+        return 10
+    elif card == "A":
+        return 11  # Default to 11, adjust in calculate_total
+    else:
+        return int(card)
+start_menu()
 
