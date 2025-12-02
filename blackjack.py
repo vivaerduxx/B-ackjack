@@ -90,8 +90,10 @@ def main():
         text_totale = font_bottone.render(f"Totale:{tot} ", True, BIANCO)
         WIN.blit(text_totale, ((WIDTH//2 - text_totale.get_width()//2)+250, 400))
         if busted:
+            WIN.fill(VERDE)
             text_sforato = font_bottone.render("Hai sforato!", True, BIANCO)
             WIN.blit(text_sforato, (WIDTH//2 - text_sforato.get_width()//2, 100))
+            pygame.display.update()
         if game_over:
             if winner == "player":
                 text_win = font_bottone.render("Hai vinto!", True, BIANCO)
